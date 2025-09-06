@@ -1,0 +1,21 @@
+[project]
+name = "autoregressive-models"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml",
+    "torch",
+    "torchviz",
+    "lightning",
+    "torchmetrics",
+    "optuna",
+    "tensorboard",
+    "datasets",
+    "loguru",
+]
+
+
+[dependency-groups]
+dev = ["ipykernel", "ipywidgets", "jupyter", "kaggle", "rich", "pytest"]
