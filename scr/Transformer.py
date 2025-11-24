@@ -21,6 +21,19 @@ class LayerNorm(Module):
         return self.scale * norm_x + self.shift
 
 
+class FeedForward(Module):
+    def __init__(self, emb_dim: int):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(emb_dim, emb_dim * 4),
+            nn.GELU(),
+            nn.Linear(emb_dim * 4, emb_dim),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.layers(x)
+
+
 class Decoder(Module):
     def __init__(self, cfg):
         super().__init__()

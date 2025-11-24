@@ -1,5 +1,5 @@
 import torch
-from scr.Transformer import LayerNorm
+from scr.Transformer import LayerNorm, FeedForward
 
 
 def test_layer_norm_normalizes_each_row():
@@ -12,3 +12,18 @@ def test_layer_norm_normalizes_each_row():
     var = normalized.var(dim=-1, unbiased=False, keepdim=True)
     assert torch.allclose(mean, torch.zeros_like(mean), atol=1e-6)
     assert torch.allclose(var, torch.ones_like(var), atol=1e-5)
+
+
+def test_feedforward_output_shape_matches_input():
+    torch.manual_seed(0)
+    emb_dim = 256
+    batch_size = 4
+    seq_len = 10
+
+    feedforward = FeedForward(emb_dim=emb_dim)
+    feedforward.eval()
+
+    input_tensor = torch.randn(batch_size, seq_len, emb_dim)
+    output_tensor = feedforward(input_tensor)
+
+    assert output_tensor.shape == input_tensor.shape
