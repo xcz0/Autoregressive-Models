@@ -7,18 +7,12 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.nn import Module, Embedding
 
-from .Transformer import Decoder, LayerNorm
+from .Transformer import Decoder, LayerNorm, DecoderConfig
 
 
 @dataclass
-class GPTConfig:
-    vocab_size: int  # 词汇表大小
-    context_length: int  # 上下文长度
-    n_layer: int  # 层数
-    n_head: int  # 注意力头的数量
-    emb_dim: int  # 嵌入维度
-    drop_rate: float  # dropout 率
-    qkv_bias: bool = False  # 查询-键-值偏置
+class GPTConfig(DecoderConfig):
+    n_layer: int = 12  # 层数
 
 
 class GPTModel(Module):
@@ -39,10 +33,13 @@ class GPTModel(Module):
 
     def forward(self, in_idx: Tensor):
         batch_size, seq_len = in_idx.shape
-        idx = in_idx.long()
-        tok_embeds = self.token_emb(idx)
-        pos_ids = torch.arange(seq_len, device=idx.device)
-        pos_embeds = self.pos_emb(pos_ids)
+        if seq_len > self.pos_emb.num_embeddings:
+            raise ValueError(
+                f"Input sequence length ({seq_len}) exceeds "
+                f"maximum context length ({self.pos_emb.num_embeddings})"
+            )
+        tok_embeds = self.token_emb(in_idx.long())
+        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
         x = tok_embeds + pos_embeds
         x = self.drop(x)
         x = self.trf_blocks(x)
