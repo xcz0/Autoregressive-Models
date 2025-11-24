@@ -19,6 +19,7 @@ class GPTModel(Module):
     def __init__(self, cfg: GPTConfig):
         """ """
         super().__init__()
+        self.context_length = cfg.context_length
         self.token_emb = Embedding(
             num_embeddings=cfg.vocab_size, embedding_dim=cfg.emb_dim
         )
@@ -45,3 +46,14 @@ class GPTModel(Module):
         x = self.trf_blocks(x)
         x = self.final_norm(x)
         return self.out_head(x)
+
+    def generate(self, idx, max_new_tokens):
+        self.eval()
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.context_length :]
+            logits = self.forward(idx_cond)
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, next_token), dim=1)
+        return idx
