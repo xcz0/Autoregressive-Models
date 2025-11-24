@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 import torch
 from torch import Tensor
 from torch.nn import Dropout, Linear, Module
 from torch.nn import functional as F
+
+from einops import rearrange
 
 
 class Attention(Module):
@@ -123,22 +123,22 @@ class MultiHeadAttention(Attention):
         self.out_proj = Linear(self.model_dim, self.model_dim)
 
     def forward(self, x: Tensor) -> Tensor:
-        batch_size, seq_len, _ = x.shape
-        query = (
-            self.W_query(x)
-            .view(batch_size, seq_len, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+        query = rearrange(
+            self.W_query(x),
+            "batch seq_len (num_heads head_dim) -> batch num_heads seq_len head_dim",
+            num_heads=self.num_heads,
         )
-        key = (
-            self.W_key(x)
-            .view(batch_size, seq_len, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+        key = rearrange(
+            self.W_key(x),
+            "batch seq_len (num_heads head_dim) -> batch num_heads seq_len head_dim",
+            num_heads=self.num_heads,
         )
-        value = (
-            self.W_value(x)
-            .view(batch_size, seq_len, self.num_heads, self.head_dim)
-            .transpose(1, 2)
+        value = rearrange(
+            self.W_value(x),
+            "batch seq_len (num_heads head_dim) -> batch num_heads seq_len head_dim",
+            num_heads=self.num_heads,
         )
+        seq_len = query.shape[-2]
         attn_mask = self._build_mask(seq_len)
         dropout_p = self.dropout.p if self.training else 0.0
         context_vec = F.scaled_dot_product_attention(
@@ -148,9 +148,8 @@ class MultiHeadAttention(Attention):
             attn_mask=attn_mask,
             dropout_p=dropout_p,
         )
-        context_vec = (
-            context_vec.transpose(1, 2)
-            .contiguous()
-            .view(batch_size, seq_len, self.model_dim)
+        context_vec = rearrange(
+            context_vec,
+            "batch num_heads seq_len head_dim -> batch seq_len (num_heads head_dim)",
         )
         return self.out_proj(context_vec)
