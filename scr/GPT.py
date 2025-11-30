@@ -47,10 +47,12 @@ class GPTModel(Module):
         x = self.final_norm(x)
         return self.out_head(x)
 
-    def generate(self, idx, max_new_tokens):
+    def generate(self, idx, max_new_tokens, context_size=None):
+        if context_size is None:
+            context_size = self.context_length
         self.eval()
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -self.context_length :]
+            idx_cond = idx[:, -context_size:]
             logits = self.forward(idx_cond)
             logits = logits[:, -1, :]
             probs = F.softmax(logits, dim=-1)
