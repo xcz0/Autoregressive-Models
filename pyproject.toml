@@ -14,7 +14,7 @@ dependencies = [
     "tensorboard",
     "datasets",
     "loguru",
-    "einops>=0.8.1",
+    "einops",
 ]
 
 
@@ -27,4 +27,5 @@ dev = [
     "rich",
     "pytest",
     "tiktoken",
+    "ruff",
 ]
