@@ -59,7 +59,6 @@ class Attention(Module):
         scale = head_dim**-0.5
 
         # 计算注意力分数: query @ key^T
-        # (..., seq_q, head_dim) @ (..., seq_k, head_dim) -> (..., seq_q, seq_k)
         attn_scores = (
             einsum(
                 query, key, "... seq_q head_dim, ... seq_k head_dim -> ... seq_q seq_k"
@@ -79,7 +78,6 @@ class Attention(Module):
             attn_weights = torch.dropout(input=attn_weights, p=dropout_p, train=True)
 
         # 计算输出: attn_weights @ value
-        # (..., seq_q, seq_k) @ (..., seq_k, head_dim) -> (..., seq_q, head_dim)
         return einsum(
             attn_weights,
             value,
@@ -149,10 +147,14 @@ class MultiHeadAttention(Attention):
         context_length: int,
         dropout: float = 0.0,
         num_heads: int = 4,
+        num_kv_heads: int | None = None,
         mask: bool = False,
         qkv_bias: bool = False,
     ):
         assert out_dim % num_heads == 0, "out_dim must be divisible by num_heads"
+        if num_kv_heads is None:
+            num_kv_heads = num_heads
+        assert num_kv_heads <= num_heads and num_heads % num_kv_heads == 0
         super().__init__(
             in_dim=in_dim,
             out_dim=out_dim,
@@ -162,22 +164,23 @@ class MultiHeadAttention(Attention):
             qkv_bias=qkv_bias,
         )
         self.num_heads = num_heads
+        self.num_kv_heads = num_kv_heads
         self.head_dim = out_dim // num_heads
         self.out_proj = Linear(in_features=self.model_dim, out_features=self.model_dim)
 
-    def _split_heads(self, x: Tensor) -> Tensor:
+    def _split_heads(self, x: Tensor, heads: int) -> Tensor:
         """将张量分割为多头形式: (batch, seq_len, out_dim) -> (batch, num_heads, seq_len, head_dim)"""
         return rearrange(
             tensor=x,
             pattern="batch seq_len (num_heads head_dim) -> batch num_heads seq_len head_dim",
-            num_heads=self.num_heads,
+            num_heads=heads,
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        query = self._split_heads(self.W_query(x))
-        key = self._split_heads(self.W_key(x))
-        value = self._split_heads(self.W_value(x))
-        seq_len = query.shape[-2]
+        query = self._split_heads(x=self.W_query(x), heads=self.num_heads)
+        key = self._split_heads(x=self.W_key(x), heads=self.num_kv_heads)
+        value = self._split_heads(x=self.W_value(x), heads=self.num_kv_heads)
+        seq_len = x.shape[-2]
         attn_mask = self._build_mask(seq_len=seq_len)
         dropout_p = self.dropout.p if self.training else 0.0
         context_vec = self._scaled_dot_product_attention(
