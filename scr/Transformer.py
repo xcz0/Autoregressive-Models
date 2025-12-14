@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-import torch
-import torch.nn as nn
-from torch.nn import Module
+from torch import Tensor
+from torch.nn import Module, Linear, GELU, Sequential, Dropout
 
 from .Attention import MultiHeadAttention
 from .Norm import LayerNorm
@@ -21,13 +20,13 @@ class DecoderConfig:
 class FeedForward(Module):
     def __init__(self, emb_dim: int):
         super().__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(emb_dim, emb_dim * 4),
-            nn.GELU(),
-            nn.Linear(emb_dim * 4, emb_dim),
+        self.layers = Sequential(
+            Linear(emb_dim, emb_dim * 4),
+            GELU(),
+            Linear(emb_dim * 4, emb_dim),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return self.layers(x)
 
 
@@ -46,7 +45,7 @@ class Decoder(Module):
         self.norm1 = LayerNorm(cfg.emb_dim)
         self.ffn = FeedForward(cfg.emb_dim)
         self.norm2 = LayerNorm(cfg.emb_dim)
-        self.drop_shortcut = nn.Dropout(cfg.drop_rate)
+        self.drop_shortcut = Dropout(cfg.drop_rate)
 
     def forward(self, x):
         """
