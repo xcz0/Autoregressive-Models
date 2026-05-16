@@ -1,6 +1,7 @@
 # SequentialData.py
 
 import torch
+from torch import Tensor
 from torch.utils.data import Dataset
 
 from lightning.pytorch import LightningDataModule
@@ -15,7 +16,7 @@ class SequenceDataset(Dataset):
     def __len__(self) -> int:
         return self.data.size(0) - self.sequence_length // self.stride
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> tuple[Tensor, Tensor]:
         x = self.data[idx * self.stride : idx * self.stride + self.sequence_length]
         y = self.data[idx * self.stride + self.sequence_length]
         return x, y
